@@ -1,5 +1,5 @@
 /*
- * Operating Systems <2INC0> Practical 
+ * Operating Systems <2INC0> Practical
  * 2016/2020 (c) Joris Geurts
  *
  * This program contains some C constructs which might be useful for
@@ -9,7 +9,7 @@
  *      I M P O R T A N T    M E S S A G E :
  *      ====================================
  *
- * For readability reasons, this program does not check the return value of 
+ * For readability reasons, this program does not check the return value of
  * the POSIX calls.
  * This is not a good habit.
  * Always check the return value of a system call (you never know if the disk is
@@ -60,7 +60,7 @@ bit_test (void)
     // set all bits to 1
     v = ~0;
 
-    printf ("v (all 1's) : %lx%016lx\n", HI(v), LO(v)); 
+    printf ("v (all 1's) : %lx%016lx\n", HI(v), LO(v));
     BIT_CLEAR (v, 4);
     BIT_CLEAR (v, 127);
     BIT_CLEAR (v, 126);
