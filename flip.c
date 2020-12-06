@@ -34,22 +34,19 @@
 
 #define BIT_TOGGLE(v,n)     ((v) =  (v) ^ BITMASK(n))
 
-#define BUFFER_SIZE (NROF_PIECES/128) + 1
+#define BUFFER_SIZE         (NROF_PIECES/128) + 1
 
-void toggle(uint128_t buf[], size_t foo)
+
+int toggle_bit(uint128_t buf[], size_t bit_pos)
 {
-    // int i = 0;
-    // for(i = 0; i < NROF_PIECES; i++)
-    // {
-    //     if( (i % pos) == 0)
-    // }
+    // we are accessing out of bounds
+    if (bit_pos > NROF_PIECES) return -1;
 
-    int i = (foo/128);
-    int pos = foo % 128;
-    BIT_TOGGLE(buf[i], pos);
-    // printf ("Buf[%d] : %lx%lx\n", i, HI(buf[i]), LO(buf[i]));
+    size_t index = bit_pos / 128;
+    char pos = bit_pos % 128;
+    BIT_TOGGLE(buf[index], pos);
 
-
+    return 0;
 }
 
 
@@ -58,34 +55,25 @@ int main (void)
     // TODO: start threads to flip the pieces and output the results
     // (see thread_test() and thread_mutex_test() how to use threads and mutexes,
     //  see bit_test() how to manipulate bits in a large integer)
+
+    // Set all bits to 1 (i.e. white)
     memset(buffer, ~0, sizeof(buffer));
 
-    int i, j;
-
-
-    // toggle(buffer, 0);
-    // toggle(buffer, 1);
-    // toggle(buffer, 2);
-    // toggle(buffer, 3);
-    // printf("\n");
-
-    for(i = 1 ; i<= NROF_PIECES; i++)
+    for(int i = 1; i <= NROF_PIECES; i++)
     {
-        for(j = i; j<= NROF_PIECES; j += i)
+        for(int j = i; j <= NROF_PIECES; j += i)
         {
-
-            toggle(buffer, j-1);
+            int code = toggle_bit(buffer, j - 1);
+            if (code == -1) {
+                printf("Buffer access out of bounds.\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
-    
 
-    
 
-    // BIT_TOGGLE(buffer[1], 5);
-
-    for (i = 0; i < (NROF_PIECES/128) + 1; i++) {
+    for (int i = 0; i < BUFFER_SIZE; i++) {
         uint128_t ll = buffer[i];
-        // printf ("all 1's : %lx%lx\n", HI(ll), LO(ll));
         printf ("%lx%lx\n", HI(ll), LO(ll));
     }
     printf("\n");
