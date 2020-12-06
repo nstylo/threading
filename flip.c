@@ -37,6 +37,13 @@
 #define BUFFER_SIZE         (NROF_PIECES/128) + 1
 
 
+struct args_t {
+    int i;
+    pthread_cond_t *cv;
+    pthread_mutex_t *mu;
+};
+
+
 int toggle_bit(uint128_t buf[], size_t bit_pos)
 {
     // we are accessing out of bounds
@@ -49,35 +56,91 @@ int toggle_bit(uint128_t buf[], size_t bit_pos)
     return 0;
 }
 
-
-int main (void)
+static void *solve(void *args_p)
 {
-    // TODO: start threads to flip the pieces and output the results
-    // (see thread_test() and thread_mutex_test() how to use threads and mutexes,
-    //  see bit_test() how to manipulate bits in a large integer)
+    struct args_t *args = (struct args_t*) args_p;
 
-    // Set all bits to 1 (i.e. white)
-    memset(buffer, ~0, sizeof(buffer));
+    // TODO: use mutex
 
-    for(int i = 1; i <= NROF_PIECES; i++)
+    for(int j = args->i; j <= NROF_PIECES; j += args->i)
     {
-        for(int j = i; j <= NROF_PIECES; j += i)
-        {
-            int code = toggle_bit(buffer, j - 1);
-            if (code == -1) {
-                printf("Buffer access out of bounds.\n");
-                exit(EXIT_FAILURE);
-            }
+        int ret = toggle_bit(buffer, j - 1);
+        if (ret == -1) {
+            perror("Buffer access out of bounds.\n");
+            return (void*)-1;
         }
     }
 
+    // signal back to main thread
+    pthread_cond_signal(args->cv);
 
+    return (void*)0;
+}
+
+int main (void)
+{
+    // Set all bits to 1 (i.e. white)
+    memset(buffer, ~0, sizeof(buffer));
+
+    // TODO: how to mutex buffer?
+    int ret;
+
+    // initialize condition variable and mutex
+    pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+    pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
+
+    // TODO: handle multiple threads
+    pthread_t tid;
+    pthread_attr_t tattr;
+
+    // set thread into detached state to free auto free recourses after return
+    ret = pthread_attr_init(&tattr);
+    printf("pthread_attr_init: %d\n\n", ret);
+    ret = pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
+    printf("pthread_attr_setdetachstate: %d\n\n", ret);
+
+    // TODO: make sure to use arguments properly (e.g. create NROF_THREADS times args??)
+    struct args_t *args = malloc(sizeof(struct args_t));
+    args->i = 8;
+    args->cv = &cv;
+    args->mu = &mu;
+
+    // create a worker
+    // TODO: start looping and use mutex
+    ret = pthread_create(&tid, &tattr, solve, args);
+    printf("pthread_create: %d\n\n", ret);
+
+    // wait for condition variable to be set
+    ret = pthread_cond_wait(&cv, &mu);
+    printf("pthread_wait: %d\n\n", ret);
+
+
+    // print result, note that depending on NROF_PIECES, there might be trailing f's
     for (int i = 0; i < BUFFER_SIZE; i++) {
         uint128_t ll = buffer[i];
         printf ("%lx%lx\n", HI(ll), LO(ll));
     }
-    printf("\n");
 
+    // don't forget to reclaim recourses
+    free(args);
 
     return (0);
+}
+
+
+int solve_non_threaded()
+{
+    for(int i = 1; i <= NROF_PIECES; i++)
+    {
+        for(int j = i; j <= NROF_PIECES; j += i)
+        {
+            int ret = toggle_bit(buffer, j - 1);
+            if (ret == -1) {
+                printf("Buffer access out of bounds.\n");
+                return -1;
+            }
+        }
+    }
+
+    return 0;
 }
