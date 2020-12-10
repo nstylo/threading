@@ -37,6 +37,10 @@
 #define BUFFER_SIZE         (NROF_PIECES/128) + 1
 
 
+// TODO: this is currently not mutex locked
+static int nrof_workers = 0;
+
+
 struct args_t {
     int i;
     pthread_cond_t *cv;
@@ -60,7 +64,9 @@ static void *solve(void *args_p)
 {
     struct args_t *args = (struct args_t*) args_p;
 
-    // TODO: use mutex
+    // lock by mutex
+    // TODO: is this the correct way?
+    pthread_mutex_lock(args->mu);
 
     for(int j = args->i; j <= NROF_PIECES; j += args->i)
     {
@@ -71,8 +77,13 @@ static void *solve(void *args_p)
         }
     }
 
-    // signal back to main thread
+    // unlock and signal back to main thread
+    nrof_workers--;
+    pthread_mutex_unlock(args->mu);
     pthread_cond_signal(args->cv);
+
+    // reclaim ressources
+    free(args);
 
     return (void*)0;
 }
@@ -82,38 +93,51 @@ int main (void)
     // Set all bits to 1 (i.e. white)
     memset(buffer, ~0, sizeof(buffer));
 
-    // TODO: how to mutex buffer?
     int ret;
 
     // initialize condition variable and mutex
     pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
     pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
-    // TODO: handle multiple threads
-    pthread_t tid;
-    pthread_attr_t tattr;
+    for (int i = 1; i <= NROF_PIECES; i++)
+    {
+        pthread_mutex_lock(&mu);
+        while (nrof_workers >= NROF_THREADS)
+        {
+            pthread_cond_wait(&cv, &mu);
+        }
 
-    // set thread into detached state to free auto free recourses after return
-    ret = pthread_attr_init(&tattr);
-    printf("pthread_attr_init: %d\n\n", ret);
-    ret = pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-    printf("pthread_attr_setdetachstate: %d\n\n", ret);
+        struct args_t *args = malloc(sizeof(struct args_t));
+        args->i = i;
+        args->cv = &cv;
+        args->mu = &mu;
 
-    // TODO: make sure to use arguments properly (e.g. create NROF_THREADS times args??)
-    struct args_t *args = malloc(sizeof(struct args_t));
-    args->i = 8;
-    args->cv = &cv;
-    args->mu = &mu;
+        // TODO: make function
+        pthread_t tid;
+        pthread_attr_t tattr;
 
-    // create a worker
-    // TODO: start looping and use mutex
-    ret = pthread_create(&tid, &tattr, solve, args);
-    printf("pthread_create: %d\n\n", ret);
+        // set thread into detached state to auto free recourses after return
+        ret = pthread_attr_init(&tattr);
+        ret = pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
+
+        // increment nr of workers and unlock
+        nrof_workers++;
+        printf("nr of workers: %d\n", nrof_workers);
+        pthread_mutex_unlock(&mu);
+
+        // create a worker
+        ret = pthread_create(&tid, &tattr, solve, args);
+    }
+
 
     // wait for condition variable to be set
-    ret = pthread_cond_wait(&cv, &mu);
-    printf("pthread_wait: %d\n\n", ret);
-
+    printf("\nfinal number of workers left: %d\n\n", nrof_workers);
+    pthread_mutex_lock(&mu);
+    while (nrof_workers > 0)
+    {
+        ret = pthread_cond_wait(&cv, &mu);
+    }
+    pthread_mutex_unlock(&mu);
 
     // print result, note that depending on NROF_PIECES, there might be trailing f's
     for (int i = 0; i < BUFFER_SIZE; i++) {
@@ -121,10 +145,11 @@ int main (void)
         printf ("%lx%lx\n", HI(ll), LO(ll));
     }
 
-    // don't forget to reclaim recourses
-    free(args);
+    // destroy mutex
+    pthread_mutex_destroy(&mu);
+    pthread_cond_destroy(&cv);
 
-    return (0);
+    return 0;
 }
 
 
