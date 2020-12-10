@@ -47,7 +47,6 @@ struct args_t {
     pthread_mutex_t *mu;
 };
 
-
 int toggle_bit(uint128_t buf[], size_t bit_pos)
 {
     // we are accessing out of bounds
@@ -88,6 +87,21 @@ static void *solve(void *args_p)
     return (void*)0;
 }
 
+int display_results()
+{
+    for(int i = 1; i <= NROF_PIECES; i++)
+    {
+        size_t index = i / 128;
+        char pos = i % 128;
+
+        // Only print if the bit is set
+        if(BIT_IS_SET(buffer[index], pos))
+            printf("%d\n", i);
+    }
+
+    return 0;
+}
+
 int main (void)
 {
     // Set all bits to 1 (i.e. white)
@@ -112,8 +126,7 @@ int main (void)
         args->cv = &cv;
         args->mu = &mu;
 
-        // TODO: make function
-        // branch test
+        // TODO: make function // <-- may not be needed
         pthread_t tid;
         pthread_attr_t tattr;
 
@@ -123,7 +136,7 @@ int main (void)
 
         // increment nr of workers and unlock
         nrof_workers++;
-        printf("nr of workers: %d\n", nrof_workers);
+        // printf("nr of workers: %d\n", nrof_workers);
         pthread_mutex_unlock(&mu);
 
         // create a worker
@@ -132,7 +145,7 @@ int main (void)
 
 
     // wait for condition variable to be set
-    printf("\nfinal number of workers left: %d\n\n", nrof_workers);
+    // printf("\nfinal number of workers left: %d\n\n", nrof_workers);
     pthread_mutex_lock(&mu);
     while (nrof_workers > 0)
     {
@@ -141,14 +154,16 @@ int main (void)
     pthread_mutex_unlock(&mu);
 
     // print result, note that depending on NROF_PIECES, there might be trailing f's
-    for (int i = 0; i < BUFFER_SIZE; i++) {
-        uint128_t ll = buffer[i];
-        printf ("%lx%lx\n", HI(ll), LO(ll));
-    }
+    // for (int i = 0; i < BUFFER_SIZE; i++) {
+    //     uint128_t ll = buffer[i];
+    //     printf ("%lx%lx\n", HI(ll), LO(ll));
+    // }
 
     // destroy mutex
     pthread_mutex_destroy(&mu);
     pthread_cond_destroy(&cv);
+
+    display_results();
 
     return 0;
 }
@@ -156,10 +171,12 @@ int main (void)
 
 int solve_non_threaded()
 {
+
     for(int i = 1; i <= NROF_PIECES; i++)
     {
         for(int j = i; j <= NROF_PIECES; j += i)
         {
+            
             int ret = toggle_bit(buffer, j - 1);
             if (ret == -1) {
                 printf("Buffer access out of bounds.\n");
@@ -170,3 +187,4 @@ int solve_non_threaded()
 
     return 0;
 }
+
