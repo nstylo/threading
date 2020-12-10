@@ -113,6 +113,7 @@ int main (void)
         args->mu = &mu;
 
         // TODO: make function
+        // branch test
         pthread_t tid;
         pthread_attr_t tattr;
 
