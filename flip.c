@@ -3,7 +3,7 @@
  * Threaded Application
  *
  * Niklas Stylianou (1284037)
- * STUDENT_NAME_2 (STUDENT_NR_2)
+ * Omer Yildiz (1644300)
  *
  * Grading: * Students who hand in clean code that fully satisfies the minimum requirements will get an 8.
  * Extra steps can lead to higher marks because we want students to take the initiative.
@@ -137,7 +137,7 @@ int main (void)
     pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
     pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
-    for (int i = 1; i <= NROF_PIECES; i++)
+    for (int i = 2; i <= NROF_PIECES; i++)
     {
         // block main thread as long as max. nr of workers are running
         pthread_mutex_lock(&mu);
