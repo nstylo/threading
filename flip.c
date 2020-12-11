@@ -81,7 +81,6 @@ static void *solve(void *args_p)
     struct args_t *args = (struct args_t*) args_p;
 
     // lock by mutex
-    // TODO: is this the correct way?
     pthread_mutex_lock(args->mu);
 
     for(int j = args->i; j <= NROF_PIECES; j += args->i)
