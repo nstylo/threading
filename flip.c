@@ -89,14 +89,14 @@ static void *solve(void *args_p)
 
 int display_results()
 {
-    for(int i = 1; i <= NROF_PIECES; i++)
+    for (int i = 0; i < NROF_PIECES; i++)
     {
         size_t index = i / 128;
         char pos = i % 128;
 
         // Only print if the bit is set
         if(BIT_IS_SET(buffer[index], pos))
-            printf("%d\n", i);
+            printf("%d\n", i + 1);
     }
 
     return 0;
