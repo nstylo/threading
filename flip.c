@@ -16,6 +16,7 @@
 #include <errno.h>          // for perror()
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "uint128.h"
 #include "flip.h"
@@ -117,7 +118,7 @@ int display_results()
         char pos = i % 128;
 
         // Only print if the bit is set
-        if(BIT_IS_SET(buffer[index], pos))
+        if (BIT_IS_SET(buffer[index], pos))
             printf("%d\n", i + 1);
     }
 
@@ -127,6 +128,11 @@ int display_results()
 
 int main (void)
 {
+    #ifdef BENCHMARK
+        // start clock for benchmarking reasons
+        clock_t start = clock();
+    #endif
+
     // Set all bits to 1 (i.e. white)
     memset(buffer, ~0, sizeof(buffer));
 
@@ -137,7 +143,7 @@ int main (void)
     pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
     pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
-    for (int i = 1; i <= NROF_PIECES; i++)
+    for (int i = 2; i <= NROF_PIECES; i++)
     {
         // block main thread as long as max. nr of workers are running
         pthread_mutex_lock(&mu);
@@ -161,7 +167,6 @@ int main (void)
 
         // increment nr of workers and unlock
         nrof_workers++;
-        // printf("nr of workers: %d\n", nrof_workers);
         pthread_mutex_unlock(&mu);
 
         // create a worker
@@ -181,6 +186,12 @@ int main (void)
     pthread_cond_destroy(&cv);
 
     display_results();
+
+    #ifdef BENCHMARK
+        clock_t end = clock();
+        double total_cpu_time = ((double) end - start) / CLOCKS_PER_SEC;
+        printf("\n\n>>> %fs\n\n", total_cpu_time);
+    #endif
 
     return 0;
 }
