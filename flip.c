@@ -32,21 +32,34 @@
 // clear bit n in v
 #define BIT_CLEAR(v,n)      ((v) =  (v) & ~BITMASK(n))
 
+// toggle bit at position n
 #define BIT_TOGGLE(v,n)     ((v) =  (v) ^ BITMASK(n))
 
+// size of global buffer
 #define BUFFER_SIZE         (NROF_PIECES/128) + 1
 
 
-// TODO: this is currently not mutex locked
+/*
+ * global variable determining the number of currently
+ * running worker threads.
+ */
 static int nrof_workers = 0;
 
 
+/*
+ * data necessary for worker thread computation.
+ * Holds references to mutex and condition variable.
+ */
 struct args_t {
     int i;
     pthread_cond_t *cv;
     pthread_mutex_t *mu;
 };
 
+
+/*
+ * Toggle a single bit of buf at position bit_pos.
+ */
 int toggle_bit(uint128_t buf[], size_t bit_pos)
 {
     // we are accessing out of bounds
@@ -59,6 +72,10 @@ int toggle_bit(uint128_t buf[], size_t bit_pos)
     return 0;
 }
 
+
+/*
+ * worker thread callback. Solve for single number.
+ */
 static void *solve(void *args_p)
 {
     struct args_t *args = (struct args_t*) args_p;
@@ -87,6 +104,12 @@ static void *solve(void *args_p)
     return (void*)0;
 }
 
+
+/*
+ * Prints the result of the computation to stdout. A printed number
+ * indicates a bit which is set to 1. A missing number indicates a bit
+ * set to 0.
+ */
 int display_results()
 {
     for (int i = 0; i < NROF_PIECES; i++)
@@ -102,11 +125,13 @@ int display_results()
     return 0;
 }
 
+
 int main (void)
 {
     // Set all bits to 1 (i.e. white)
     memset(buffer, ~0, sizeof(buffer));
 
+    // TODO: check for failed calls
     int ret;
 
     // initialize condition variable and mutex
@@ -115,18 +140,19 @@ int main (void)
 
     for (int i = 1; i <= NROF_PIECES; i++)
     {
+        // block main thread as long as max. nr of workers are running
         pthread_mutex_lock(&mu);
         while (nrof_workers >= NROF_THREADS)
         {
             pthread_cond_wait(&cv, &mu);
         }
 
+        // Initialize necessary data for creating thread
         struct args_t *args = malloc(sizeof(struct args_t));
         args->i = i;
         args->cv = &cv;
         args->mu = &mu;
 
-        // TODO: make function // <-- may not be needed
         pthread_t tid;
         pthread_attr_t tattr;
 
@@ -143,21 +169,13 @@ int main (void)
         ret = pthread_create(&tid, &tattr, solve, args);
     }
 
-
     // wait for condition variable to be set
-    // printf("\nfinal number of workers left: %d\n\n", nrof_workers);
     pthread_mutex_lock(&mu);
     while (nrof_workers > 0)
     {
         ret = pthread_cond_wait(&cv, &mu);
     }
     pthread_mutex_unlock(&mu);
-
-    // print result, note that depending on NROF_PIECES, there might be trailing f's
-    // for (int i = 0; i < BUFFER_SIZE; i++) {
-    //     uint128_t ll = buffer[i];
-    //     printf ("%lx%lx\n", HI(ll), LO(ll));
-    // }
 
     // destroy mutex
     pthread_mutex_destroy(&mu);
@@ -169,14 +187,15 @@ int main (void)
 }
 
 
-int solve_non_threaded()
+/*
+ * Old implementation. Single threaded.
+ */
+int solve_single_threaded()
 {
-
     for(int i = 1; i <= NROF_PIECES; i++)
     {
         for(int j = i; j <= NROF_PIECES; j += i)
         {
-            
             int ret = toggle_bit(buffer, j - 1);
             if (ret == -1) {
                 printf("Buffer access out of bounds.\n");
@@ -187,4 +206,3 @@ int solve_non_threaded()
 
     return 0;
 }
-
