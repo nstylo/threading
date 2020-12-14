@@ -16,6 +16,7 @@
 #include <errno.h>          // for perror()
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "uint128.h"
 #include "flip.h"
@@ -119,7 +120,7 @@ int display_results()
         char pos = i % 128;
 
         // Only print if the bit is set
-        if(BIT_IS_SET(buffer[index], pos))
+        if (BIT_IS_SET(buffer[index], pos))
             printf("%d\n", i + 1);
     }
 
@@ -129,6 +130,11 @@ int display_results()
 
 int main (void)
 {
+    #ifdef BENCHMARK
+        // start clock for benchmarking reasons
+        clock_t start = clock();
+    #endif
+
     // Set all bits to 1 (i.e. white)
     memset(buffer, ~0, sizeof(buffer));
 
@@ -184,6 +190,12 @@ int main (void)
     pthread_cond_destroy(&cv);
 
     display_results();
+
+    #ifdef BENCHMARK
+        clock_t end = clock();
+        double total_cpu_time = ((double) end - start) / CLOCKS_PER_SEC;
+        printf("\n\n>>> %fs\n\n", total_cpu_time);
+    #endif
 
     return 0;
 }
