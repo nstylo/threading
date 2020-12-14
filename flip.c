@@ -78,6 +78,7 @@ int toggle_bit(uint128_t buf[], size_t bit_pos)
  */
 static void *solve(void *args_p)
 {
+    // Proper casting before dereferencing
     struct args_t *args = (struct args_t*) args_p;
 
     // lock by mutex
@@ -94,6 +95,7 @@ static void *solve(void *args_p)
 
     // unlock and signal back to main thread
     nrof_workers--;
+
     pthread_mutex_unlock(args->mu);
     pthread_cond_signal(args->cv);
 
@@ -161,6 +163,7 @@ int main (void)
 
         // increment nr of workers and unlock
         nrof_workers++;
+
         // printf("nr of workers: %d\n", nrof_workers);
         pthread_mutex_unlock(&mu);
 
